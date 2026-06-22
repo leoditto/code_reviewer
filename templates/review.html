@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review — {{ review.grade }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="report-header">
+            <h1>
+                Code Review
+                <span class="grade-badge grade-{{ review.grade }}">{{ review.grade }}</span>
+            </h1>
+            <div class="meta">
+                {{ review.total_issues }} issues &middot;
+                {{ review.agreements | length }} consensus &middot;
+                {{ review.conflicts | length }} conflicts resolved
+            </div>
+        </div>
+
+        <div class="report-layout">
+            <div class="main-content">
+                <!-- Tabs -->
+                <div class="review-tabs">
+                    <button class="review-tab active" onclick="switchTab('synthesis')">Synthesis</button>
+                    <button class="review-tab tab-security" onclick="switchTab('security')">Security</button>
+                    <button class="review-tab tab-performance" onclick="switchTab('performance')">Performance</button>
+                    <button class="review-tab tab-maintainability" onclick="switchTab('maintainability')">Maintainability</button>
+                    <button class="review-tab tab-bug" onclick="switchTab('bug_detection')">Bugs</button>
+                </div>
+
+                <!-- Synthesis Tab -->
+                <div id="tab-synthesis" class="tab-content active">
+                    <div class="section">
+                        <h2>Summary</h2>
+                        <p>{{ review.summary }}</p>
+                    </div>
+
+                    {% if review.conflicts %}
+                    <div class="section">
+                        <h2>Resolved Conflicts ({{ review.conflicts | length }})</h2>
+                        {% for c in review.conflicts %}
+                        <div class="conflict-card">
+                            <div class="conflict-header">
+                                <span class="conflict-badge">Conflict Resolved</span>
+                                <span class="conflict-lines">Lines {{ c.line_range[0] }}–{{ c.line_range[1] }}</span>
+                            </div>
+                            <div class="conflict-positions">
+                                {% for specialist, comment in c.specialist_positions.items() %}
+                                <div class="position">
+                                    <span class="position-agent pill-{{ specialist.replace('bug_detection','bug') }}">{{ specialist }}</span>
+                                    <span class="badge badge-{{ comment.severity }}">{{ comment.severity }}</span>
+                                    {{ comment.title }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="conflict-resolution">
+                                <strong>Resolution:</strong> {{ c.resolution }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if review.agreements %}
+                    <div class="section">
+                        <h2>Consensus Items ({{ review.agreements | length }})</h2>
+                        {% for a in review.agreements %}
+                        <div class="agreement-card">
+                            <div class="agreement-header">
+                                <span class="consensus-badge consensus-{{ a.agreement_strength }}">{{ a.agreement_strength }} consensus</span>
+                                <span class="agreement-agents">
+                                    {% for s in a.specialists %}
+                                    <span class="agent-dot dot-{{ s.replace('bug_detection','bug') }}"></span>
+                                    {% endfor %}
+                                    {{ a.specialists | join(', ') }}
+                                </span>
+                            </div>
+                            <div class="finding-card severity-{{ a.merged_comment.severity }}">
+                                <div class="finding-header">
+                                    <span class="badge badge-{{ a.merged_comment.severity }}">{{ a.merged_comment.severity }}</span>
+                                    <span class="finding-title">{{ a.merged_comment.title }}</span>
+                                    <span class="finding-lines">Lines {{ a.merged_comment.line_range[0] }}–{{ a.merged_comment.line_range[1] }}</span>
+                                </div>
+                                <div class="finding-desc">{{ a.merged_comment.description }}</div>
+                                {% if a.merged_comment.line_range[0] > 0 and source_lines %}
+                                <div class="code-block">
+                                    <div class="code-header">Lines {{ a.merged_comment.line_range[0] }}–{{ a.merged_comment.line_range[1] }}</div>
+                                    <pre class="code-content">{% for i in range(a.merged_comment.line_range[0], a.merged_comment.line_range[1] + 1) %}{% if i <= source_lines | length %}<span class="code-line code-line-highlight"><span class="line-num">{{ i }}</span>{{ source_lines[i - 1] }}</span>
+{% endif %}{% endfor %}</pre>
+                                </div>
+                                {% endif %}
+                                <div class="finding-suggestion">
+                                    <strong>Fix:</strong> {{ a.merged_comment.suggestion }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if review.merged_findings %}
+                    <div class="section" style="background: none; border: none; padding: 0;">
+                        <h2>All Findings ({{ review.merged_findings | length }})</h2>
+                        {% for f in review.merged_findings %}
+                        <div class="finding-card severity-{{ f.severity }}">
+                            <div class="finding-header">
+                                <span class="badge badge-{{ f.severity }}">{{ f.severity }}</span>
+                                <span class="category-dot dot-{{ f.category }}"></span>
+                                <span class="finding-title">{{ f.title }}</span>
+                                <span class="finding-lines">Lines {{ f.line_range[0] }}–{{ f.line_range[1] }}</span>
+                            </div>
+                            <div class="finding-desc">{{ f.description }}</div>
+                            {% if f.line_range[0] > 0 and source_lines %}
+                            <div class="code-block">
+                                <div class="code-header">Lines {{ f.line_range[0] }}–{{ f.line_range[1] }}</div>
+                                <pre class="code-content">{% for i in range(f.line_range[0], f.line_range[1] + 1) %}{% if i <= source_lines | length %}<span class="code-line code-line-highlight"><span class="line-num">{{ i }}</span>{{ source_lines[i - 1] }}</span>
+{% endif %}{% endfor %}</pre>
+                            </div>
+                            {% endif %}
+                            <div class="finding-suggestion">
+                                <strong>Fix:</strong> {{ f.suggestion }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if review.top_recommendations %}
+                    <div class="section">
+                        <h2>Top Recommendations</h2>
+                        {% for r in review.top_recommendations %}
+                        <div class="list-item">{{ r }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Specialist Tabs -->
+                {% for specialist_key in ["security", "performance", "maintainability", "bug_detection"] %}
+                <div id="tab-{{ specialist_key }}" class="tab-content">
+                    {% set summary = review.per_specialist_summaries.get(specialist_key, "No data.") %}
+                    <div class="section">
+                        <h2>{{ specialist_key | replace('_', ' ') | title }} — Summary</h2>
+                        <p>{{ summary }}</p>
+                    </div>
+
+                    {% set specialist_findings = [] %}
+                    {% for f in review.merged_findings %}
+                        {% if f.category == specialist_key or (specialist_key == "bug_detection" and f.category == "bug") %}
+                            {% set _ = specialist_findings.append(f) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if specialist_findings %}
+                    <div class="section" style="background: none; border: none; padding: 0;">
+                        <h2>Findings ({{ specialist_findings | length }})</h2>
+                        {% for f in specialist_findings %}
+                        <div class="finding-card severity-{{ f.severity }}">
+                            <div class="finding-header">
+                                <span class="badge badge-{{ f.severity }}">{{ f.severity }}</span>
+                                <span class="finding-title">{{ f.title }}</span>
+                                <span class="finding-lines">Lines {{ f.line_range[0] }}–{{ f.line_range[1] }}</span>
+                            </div>
+                            <div class="finding-desc">{{ f.description }}</div>
+                            {% if f.line_range[0] > 0 and source_lines %}
+                            <div class="code-block">
+                                <div class="code-header">Lines {{ f.line_range[0] }}–{{ f.line_range[1] }}</div>
+                                <pre class="code-content">{% for i in range(f.line_range[0], f.line_range[1] + 1) %}{% if i <= source_lines | length %}<span class="code-line code-line-highlight"><span class="line-num">{{ i }}</span>{{ source_lines[i - 1] }}</span>
+{% endif %}{% endfor %}</pre>
+                            </div>
+                            {% endif %}
+                            <div class="finding-suggestion">
+                                <strong>Fix:</strong> {{ f.suggestion }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="section">
+                        <p style="color: var(--green);">No issues found by this specialist.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="eval-card">
+                    <h3>Eval Scorecard</h3>
+                    <div class="overall-score">
+                        <div class="score-circle {% if eval.overall >= 0.7 %}score-high{% elif eval.overall >= 0.4 %}score-mid{% else %}score-low{% endif %}">
+                            {{ (eval.overall * 100) | int }}
+                        </div>
+                    </div>
+                    {% set dims = [
+                        ("Coverage", eval.coverage),
+                        ("False Positive", eval.false_positive_rate),
+                        ("Conflict Resolution", eval.conflict_resolution_quality),
+                        ("Actionability", eval.actionability),
+                    ] %}
+                    {% for label, value in dims %}
+                    <div class="eval-row">
+                        <span class="eval-label">{{ label }}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="eval-bar-bg">
+                                <div class="eval-bar-fill" style="width: {{ (value * 100) | int }}%; background: {% if value >= 0.7 %}var(--green){% elif value >= 0.4 %}var(--yellow){% else %}var(--red){% endif %};"></div>
+                            </div>
+                            <span style="font-size: 0.8rem; color: var(--text-dim); width: 32px;">{{ (value * 100) | int }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if eval.per_specialist %}
+                    <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+                        <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px;">Per Specialist</div>
+                        {% for name, score in eval.per_specialist.items() %}
+                        <div class="eval-row">
+                            <span class="eval-label" style="font-size: 0.8rem;">{{ name }}</span>
+                            <span style="font-size: 0.8rem; color: {% if score >= 0.7 %}var(--green){% elif score >= 0.4 %}var(--yellow){% else %}var(--red){% endif %};">{{ (score * 100) | int }}%</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Agent Timeline -->
+                <div class="trace-card">
+                    <h3>Agent Timeline</h3>
+                    <div class="timeline">
+                        <div class="timeline-phase">
+                            <div class="phase-label">Parallel Review</div>
+                            <div class="timeline-agents">
+                                {% for st in trace.specialist_traces %}
+                                <div class="timeline-agent agent-{{ st.specialist.replace('bug_detection','bug') }}">
+                                    <span class="agent-name">{{ st.specialist | replace('_', ' ') | title }}</span>
+                                    <span class="agent-stats">{{ st.tool_calls }} calls &middot; {{ st.duration_ms | int }}ms</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">&#8595;</div>
+                        <div class="timeline-phase">
+                            <div class="phase-label">Lead Synthesis</div>
+                            <div class="timeline-agents">
+                                <div class="timeline-agent agent-lead">
+                                    <span class="agent-name">Lead Agent</span>
+                                    <span class="agent-stats">{{ trace.lead_trace.tool_calls }} calls &middot; {{ trace.lead_trace.duration_ms | int }}ms</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="timeline-total">Total: {{ trace.total_duration_ms | int }}ms</div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <a href="/" class="btn-sm">New Review</a>
+                    <a href="/api/review" class="btn-sm" onclick="return false;">JSON</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.review-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        event.target.classList.add('active');
+    }
+    </script>
+</body>
+</html>

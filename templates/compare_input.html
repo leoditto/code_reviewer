@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Agent Configurations</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>Compare Agent Teams</h1>
+            <p class="subtitle">Same code, different specialist configurations — see what gets missed</p>
+
+            {% if error %}
+            <div class="error-box">{{ error }}</div>
+            {% endif %}
+
+            <div class="compare-form">
+                <form action="/compare" method="post">
+                    <textarea class="code-input" name="code_input" id="code-input"
+                        placeholder="# Paste code here..." style="min-height: 200px;"></textarea>
+
+                    <div class="team-config">
+                        <div class="team-box">
+                            <h3>Team A</h3>
+                            <label><input type="checkbox" name="team_a_security" checked> Security</label>
+                            <label><input type="checkbox" name="team_a_performance" checked> Performance</label>
+                            <label><input type="checkbox" name="team_a_maintainability" checked> Maintainability</label>
+                            <label><input type="checkbox" name="team_a_bug_detection" checked> Bug Detection</label>
+                        </div>
+                        <div class="vs">VS</div>
+                        <div class="team-box">
+                            <h3>Team B</h3>
+                            <label><input type="checkbox" name="team_b_security" checked> Security</label>
+                            <label><input type="checkbox" name="team_b_performance"> Performance</label>
+                            <label><input type="checkbox" name="team_b_maintainability"> Maintainability</label>
+                            <label><input type="checkbox" name="team_b_bug_detection" checked> Bug Detection</label>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="team_a" id="team_a" value="">
+                    <input type="hidden" name="team_b" id="team_b" value="">
+
+                    <button type="submit" class="btn" style="margin-top: 16px; width: 100;" onclick="buildTeams()">Compare Teams</button>
+                </form>
+
+                <div class="examples" style="margin-top: 20px;">
+                    Try:
+                    <a onclick="loadSample('user_service')">User Service</a>
+                    &middot; <a onclick="loadSample('data_processor')">Data Processor</a>
+                </div>
+            </div>
+
+            <div class="powered-by">
+                <a href="/">Back to single review</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const SAMPLES = {
+        user_service: {{ mock_samples.user_service.code | tojson }},
+        data_processor: {{ mock_samples.data_processor.code | tojson }},
+        clean_api: {{ mock_samples.clean_api.code | tojson }},
+    };
+
+    function loadSample(key) {
+        document.getElementById('code-input').value = SAMPLES[key];
+    }
+
+    function buildTeams() {
+        const specialists = ['security', 'performance', 'maintainability', 'bug_detection'];
+        const teamA = specialists.filter(s => document.querySelector(`[name="team_a_${s}"]`).checked);
+        const teamB = specialists.filter(s => document.querySelector(`[name="team_b_${s}"]`).checked);
+        document.getElementById('team_a').value = teamA.join(',');
+        document.getElementById('team_b').value = teamB.join(',');
+    }
+    </script>
+</body>
+</html>

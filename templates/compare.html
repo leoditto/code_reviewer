@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare — {{ comparison.labels[0] }} vs {{ comparison.labels[1] }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="report-header">
+            <h1>Team Comparison</h1>
+            <div class="meta">
+                {{ comparison.labels[0] }}
+                <span class="grade-badge grade-{{ a.review.grade }}">{{ a.review.grade }}</span>
+                vs
+                {{ comparison.labels[1] }}
+                <span class="grade-badge grade-{{ b.review.grade }}">{{ b.review.grade }}</span>
+            </div>
+        </div>
+
+        <div class="compare-eval-grid">
+            <div class="compare-eval-col">
+                <div class="score-circle {% if a.eval.overall >= 0.7 %}score-high{% elif a.eval.overall >= 0.4 %}score-mid{% else %}score-low{% endif %}">
+                    {{ (a.eval.overall * 100) | int }}
+                </div>
+                <div style="margin-top: 8px; color: var(--text-dim); font-size: 0.85rem;">{{ comparison.labels[0] }}</div>
+            </div>
+            <div class="compare-eval-col">
+                <div class="score-circle {% if b.eval.overall >= 0.7 %}score-high{% elif b.eval.overall >= 0.4 %}score-mid{% else %}score-low{% endif %}">
+                    {{ (b.eval.overall * 100) | int }}
+                </div>
+                <div style="margin-top: 8px; color: var(--text-dim); font-size: 0.85rem;">{{ comparison.labels[1] }}</div>
+            </div>
+        </div>
+
+        <!-- Tornado Chart -->
+        <div class="section">
+            <h2>Eval Comparison</h2>
+            {% set eval_dims = [("Coverage", "coverage"), ("False Positive", "false_positive_rate"), ("Conflict Resolution", "conflict_resolution_quality"), ("Actionability", "actionability")] %}
+            {% for label, key in eval_dims %}
+            <div class="tornado-row">
+                <div class="tornado-left">
+                    <span class="tornado-val">{{ (a.eval[key] * 100) | int }}%</span>
+                    <div class="tornado-bar-bg">
+                        <div class="tornado-bar-fill" style="width: {{ (a.eval[key] * 100) | int }}%; background: var(--accent);"></div>
+                    </div>
+                </div>
+                <span class="tornado-label">{{ label }}</span>
+                <div class="tornado-right">
+                    <div class="tornado-bar-bg">
+                        <div class="tornado-bar-fill" style="width: {{ (b.eval[key] * 100) | int }}%; background: var(--cyan);"></div>
+                    </div>
+                    <span class="tornado-val">{{ (b.eval[key] * 100) | int }}%</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- What was missed -->
+        <div class="compare-row">
+            <div class="compare-cell">
+                <div class="compare-cell-label">Only found by {{ comparison.labels[0] }} <span class="compare-count">({{ comparison.only_a | length }})</span></div>
+                {% for f in comparison.only_a %}
+                <div class="finding-card severity-{{ f.severity }}" style="margin-bottom: 8px;">
+                    <div class="finding-header">
+                        <span class="badge badge-{{ f.severity }}">{{ f.severity }}</span>
+                        <span class="finding-title">{{ f.title }}</span>
+                    </div>
+                    <div class="finding-desc">{{ f.description }}</div>
+                </div>
+                {% endfor %}
+                {% if not comparison.only_a %}
+                <p style="color: var(--text-dim); font-size: 0.85rem;">Nothing unique.</p>
+                {% endif %}
+            </div>
+            <div class="compare-cell">
+                <div class="compare-cell-label">Only found by {{ comparison.labels[1] }} <span class="compare-count">({{ comparison.only_b | length }})</span></div>
+                {% for f in comparison.only_b %}
+                <div class="finding-card severity-{{ f.severity }}" style="margin-bottom: 8px;">
+                    <div class="finding-header">
+                        <span class="badge badge-{{ f.severity }}">{{ f.severity }}</span>
+                        <span class="finding-title">{{ f.title }}</span>
+                    </div>
+                    <div class="finding-desc">{{ f.description }}</div>
+                </div>
+                {% endfor %}
+                {% if not comparison.only_b %}
+                <p style="color: var(--text-dim); font-size: 0.85rem;">Nothing unique.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="section" style="margin-top: 24px;">
+            <h2>Summaries</h2>
+            <div class="compare-row">
+                <div class="compare-cell">
+                    <div class="compare-cell-label">{{ comparison.labels[0] }}</div>
+                    <p>{{ a.review.summary }}</p>
+                </div>
+                <div class="compare-cell">
+                    <div class="compare-cell-label">{{ comparison.labels[1] }}</div>
+                    <p>{{ b.review.summary }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions" style="justify-content: center; padding: 32px 0;">
+            <a href="/compare" class="btn-sm">New Comparison</a>
+            <a href="/" class="btn-sm">Single Review</a>
+        </div>
+    </div>
+</body>
+</html>
