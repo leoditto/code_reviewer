@@ -9,26 +9,18 @@
 
 ## Architecture
 
-```
-User submits code
-        |
-        v
-+---- asyncio.gather -----------------------+
-| Security    Performance                    |
-| Maintainability    Bug Detection           |
-| (each: own prompt, own tools, own context) |
-+-------------------+------------------------+
-                    |  4x SpecialistReport
-                    v
-              Lead Agent
-         (merge, deduplicate,
-          resolve conflicts)
-                    |
-                    v
-             CodeReview
-       (grade, merged findings,
-        agreements, conflicts,
-        recommendations)
+```mermaid
+graph TD
+    A[User submits code] --> B{asyncio.gather}
+    B --> C[🔒 Security Agent]
+    B --> D[⚡ Performance Agent]
+    B --> E[🧹 Maintainability Agent]
+    B --> F[🐛 Bug Detection Agent]
+    C --> G[Lead Agent]
+    D --> G
+    E --> G
+    F --> G
+    G -->|merge, deduplicate,<br>resolve conflicts| H[Final CodeReview<br>Grade · Findings · Conflicts]
 ```
 
 Each specialist has isolated context — they can't see each other's work. The lead agent receives all reports and:
