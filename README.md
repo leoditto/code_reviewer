@@ -2,7 +2,10 @@
 
 4 specialist AI agents review your code in parallel, then a lead agent synthesizes findings and resolves disagreements.
 
-![Landing Page](docs/landing.png)
+<p>
+  <img src="docs/landing.png" width="49%" alt="Landing Page">
+  <img src="docs/progress_demo.gif" width="49%" alt="Live Progress">
+</p>
 
 ## Architecture
 
@@ -44,17 +47,11 @@ Each specialist has isolated context — they can't see each other's work. The l
 - **Compare mode** — same code reviewed by different team compositions to see what gets missed
 - **LM Studio compatible** — works with any OpenAI-compatible local model
 
-## Live Progress
-
-![Progress Demo](docs/progress_demo.gif)
-
-Each specialist lights up as it starts analyzing, shows tool calls in real time, and reports findings when done. The lead agent then merges all results.
-
 ## Review Output
 
-![Review Detail](docs/review_detail.png)
+<img src="docs/review_detail.png" width="70%" alt="Review Detail">
 
-Synthesis view with conflict resolution, consensus items, eval scorecard, and agent timeline.
+Conflict resolution, consensus items, eval scorecard, and agent timeline.
 
 ## Tech Stack
 
