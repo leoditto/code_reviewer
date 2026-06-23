@@ -37,9 +37,38 @@ class _OpenAIMessages:
         self._model = os.environ.get("OPENAI_MODEL", "gpt-4o")
 
     def create(self, *, model, max_tokens, system, messages, tools=None):
+        import json as _json
         oai_messages = [{"role": "system", "content": system}]
+
         for m in messages:
-            oai_messages.append({"role": m["role"], "content": m["content"]})
+            content = m["content"]
+
+            if m["role"] == "assistant" and isinstance(content, list):
+                text_parts = [b["text"] for b in content if b.get("type") == "text"]
+                tool_calls = [
+                    {
+                        "id": b["id"],
+                        "type": "function",
+                        "function": {"name": b["name"], "arguments": _json.dumps(b["input"])},
+                    }
+                    for b in content if b.get("type") == "tool_use"
+                ]
+                msg = {"role": "assistant", "content": "\n".join(text_parts) if text_parts else None}
+                if tool_calls:
+                    msg["tool_calls"] = tool_calls
+                oai_messages.append(msg)
+
+            elif m["role"] == "user" and isinstance(content, list):
+                for b in content:
+                    if b.get("type") == "tool_result":
+                        oai_messages.append({
+                            "role": "tool",
+                            "tool_call_id": b["tool_use_id"],
+                            "content": b.get("content", ""),
+                        })
+
+            else:
+                oai_messages.append({"role": m["role"], "content": content})
 
         kwargs = {"model": self._model, "messages": oai_messages, "max_tokens": max_tokens}
         if tools:

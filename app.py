@@ -4,8 +4,10 @@ import hashlib
 import time
 import re
 
+import json as _json
+
 from fastapi import FastAPI, Form, Request, HTTPException, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -57,35 +59,28 @@ def _detect_sample_key(code: str) -> str | None:
 # ── Web UI ─────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index(request: Request, error: str = ""):
     return templates.TemplateResponse(request, "index.html", {
-        "error": None,
+        "error": error or None,
         "mock_samples": MOCK_SAMPLES,
     })
 
 
 @app.post("/review", response_class=HTMLResponse)
 async def review(request: Request, code_input: str = Form("")):
+    import urllib.parse
+
     if not code_input.strip():
-        return templates.TemplateResponse(request, "index.html", {
-            "error": "Please paste some code to review.",
-            "mock_samples": MOCK_SAMPLES,
-        }, status_code=400)
+        return RedirectResponse(url="/?error=" + urllib.parse.quote("Please paste some code to review."), status_code=303)
 
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
-        return templates.TemplateResponse(request, "index.html", {
-            "error": "Rate limit exceeded. Please wait a minute.",
-            "mock_samples": MOCK_SAMPLES,
-        }, status_code=429)
+        return RedirectResponse(url="/?error=" + urllib.parse.quote("Rate limit exceeded. Please wait a minute."), status_code=303)
 
     try:
         code = validate_code_input(code_input)
     except InputGuardError as e:
-        return templates.TemplateResponse(request, "index.html", {
-            "error": str(e),
-            "mock_samples": MOCK_SAMPLES,
-        }, status_code=400)
+        return RedirectResponse(url="/?error=" + urllib.parse.quote(str(e)), status_code=303)
 
     code_hash = hashlib.sha256(code.encode()).hexdigest()[:16]
     cached_id = store.get_by_hash(code_hash)
@@ -93,17 +88,14 @@ async def review(request: Request, code_input: str = Form("")):
         return RedirectResponse(url=f"/review/{cached_id}", status_code=303)
 
     try:
-        code_review, trace = await asyncio.wait_for(run_review(code), timeout=30)
+        code_review, trace = await asyncio.wait_for(run_review(code), timeout=300)
     except asyncio.TimeoutError:
-        return templates.TemplateResponse(request, "index.html", {
-            "error": "Analysis timed out. Please try again.",
-            "mock_samples": MOCK_SAMPLES,
-        }, status_code=504)
+        return RedirectResponse(url="/?error=" + urllib.parse.quote("Analysis timed out. Please try again."), status_code=303)
     except (AgentError, Exception) as e:
-        return templates.TemplateResponse(request, "index.html", {
-            "error": f"Analysis failed: {e}" if isinstance(e, AgentError) else "An unexpected error occurred.",
-            "mock_samples": MOCK_SAMPLES,
-        }, status_code=500)
+        import traceback
+        traceback.print_exc()
+        msg = f"Analysis failed: {e}" if isinstance(e, AgentError) else f"An unexpected error occurred: {e}"
+        return RedirectResponse(url="/?error=" + urllib.parse.quote(msg), status_code=303)
 
     sample_key = _detect_sample_key(code)
     eval_score = evaluate_review(code_review, sample_key)
@@ -133,6 +125,69 @@ async def review_page(request: Request, review_id: str):
         "source_lines": data.get("source_lines", []),
         "review_id": review_id,
     })
+
+
+# ── SSE Review ────────────────────────────────────────────────────────
+
+@app.post("/review/stream")
+async def review_stream(request: Request):
+    body = await request.json()
+    code_input = body.get("code", "")
+
+    if not code_input.strip():
+        return JSONResponse({"error": "Please paste some code to review."}, status_code=400)
+
+    try:
+        code = validate_code_input(code_input)
+    except InputGuardError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+    code_hash = hashlib.sha256(code.encode()).hexdigest()[:16]
+    cached_id = store.get_by_hash(code_hash)
+    if cached_id:
+        return JSONResponse({"cached": True, "review_id": cached_id})
+
+    progress_queue: asyncio.Queue = asyncio.Queue()
+
+    async def on_progress(event, data):
+        await progress_queue.put({"event": event, **data})
+
+    async def generate():
+        task = asyncio.create_task(_run_review_and_store(code, code_hash, progress_queue, on_progress))
+        while True:
+            try:
+                msg = await asyncio.wait_for(progress_queue.get(), timeout=310)
+            except asyncio.TimeoutError:
+                yield f"data: {_json.dumps({'event': 'error', 'message': 'Timed out'})}\n\n"
+                break
+            yield f"data: {_json.dumps(msg)}\n\n"
+            if msg.get("event") in ("done", "error"):
+                break
+        await task
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+async def _run_review_and_store(code, code_hash, queue, on_progress):
+    try:
+        code_review, trace = await run_review(code, on_progress=on_progress)
+        sample_key = _detect_sample_key(code)
+        eval_score = evaluate_review(code_review, sample_key)
+        review_id = hashlib.md5(code_hash.encode()).hexdigest()[:8]
+
+        store.put(review_id, {
+            "review": code_review.model_dump(mode="json"),
+            "trace": trace.model_dump(mode="json"),
+            "eval": eval_score.model_dump(mode="json"),
+            "source_lines": code.splitlines(),
+            "sample_key": sample_key,
+        }, code_hash=code_hash)
+
+        await queue.put({"event": "done", "review_id": review_id})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        await queue.put({"event": "error", "message": str(e)})
 
 
 # ── Compare ────────────────────────────────────────────────────────────
@@ -217,7 +272,7 @@ async def api_review(request: Request):
         return JSONResponse({"review": data["review"], "eval": data["eval"], "cached": True})
 
     try:
-        code_review, trace = await asyncio.wait_for(run_review(code), timeout=30)
+        code_review, trace = await asyncio.wait_for(run_review(code), timeout=300)
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Analysis timed out")
 

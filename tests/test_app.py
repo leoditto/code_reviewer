@@ -14,14 +14,14 @@ def test_index():
 
 
 def test_review_empty_input():
-    r = client.post("/review", data={"code_input": ""})
-    assert r.status_code == 400
+    r = client.post("/review", data={"code_input": ""}, follow_redirects=True)
+    assert r.status_code == 200
     assert "Please paste" in r.text
 
 
 def test_review_not_code():
-    r = client.post("/review", data={"code_input": "This is a long enough plain English sentence with no code."})
-    assert r.status_code == 400
+    r = client.post("/review", data={"code_input": "This is a long enough plain English sentence with no code."}, follow_redirects=True)
+    assert r.status_code == 200
     assert "does not appear" in r.text
 
 

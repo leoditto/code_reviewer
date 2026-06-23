@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; color: #fff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; }
+
+.progress-panel {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px;
+    background: #0a0a0a;
+    border: 1px solid #222;
+    border-radius: 4px;
+}
+.progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.progress-title { font-size: 14px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; color: #777; }
+.progress-elapsed { font-size: 24px; font-weight: 300; font-variant-numeric: tabular-nums; }
+
+.progress-phase-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #777; margin: 16px 0 8px; }
+.progress-phase-label:first-child { margin-top: 0; }
+.progress-arrow { text-align: center; color: #777; font-size: 18px; margin: 12px 0; }
+
+.progress-agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.progress-agent {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; background: #141414; border: 1px solid #222; border-radius: 4px;
+    transition: border-color 0.3s;
+}
+.progress-lead { grid-column: 1 / -1; }
+
+.pa-indicator {
+    width: 10px; height: 10px; border-radius: 50%; background: #555; flex-shrink: 0;
+    transition: background 0.3s, box-shadow 0.3s;
+}
+.pa-running .pa-indicator { animation: pulse-dot 1.2s ease-in-out infinite; }
+.pa-done .pa-indicator { animation: none; }
+
+#pa-security.pa-running .pa-indicator,
+#pa-security.pa-done .pa-indicator { background: #f87171; }
+#pa-security.pa-running .pa-indicator { box-shadow: 0 0 8px #f87171; }
+
+#pa-performance.pa-running .pa-indicator,
+#pa-performance.pa-done .pa-indicator { background: #fbbf24; }
+#pa-performance.pa-running .pa-indicator { box-shadow: 0 0 8px #fbbf24; }
+
+#pa-maintainability.pa-running .pa-indicator,
+#pa-maintainability.pa-done .pa-indicator { background: #818cf8; }
+#pa-maintainability.pa-running .pa-indicator { box-shadow: 0 0 8px #818cf8; }
+
+#pa-bug_detection.pa-running .pa-indicator,
+#pa-bug_detection.pa-done .pa-indicator { background: #34d399; }
+#pa-bug_detection.pa-running .pa-indicator { box-shadow: 0 0 8px #34d399; }
+
+#pa-lead.pa-running .pa-indicator,
+#pa-lead.pa-done .pa-indicator { background: #c084fc; }
+#pa-lead.pa-running .pa-indicator { box-shadow: 0 0 8px #c084fc; }
+
+.pa-info { flex: 1; min-width: 0; }
+.pa-name { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+.pa-status { font-size: 11px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pa-done .pa-status { color: #aaa; }
+
+.progress-log {
+    margin-top: 20px; padding: 14px; background: #000; border: 1px solid #222; border-radius: 4px;
+    max-height: 180px; overflow-y: auto;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; line-height: 1.7;
+}
+.log-line { color: #777; }
+.log-ts { color: #aaa; margin-right: 8px; font-variant-numeric: tabular-nums; }
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+}
+</style>
+</head>
+<body>
+<div class="progress-panel">
+    <div class="progress-header">
+        <div class="progress-title">Reviewing code...</div>
+        <div class="progress-elapsed" id="elapsed">0.0s</div>
+    </div>
+    <div class="progress-agents">
+        <div class="progress-phase-label">Parallel Review</div>
+        <div class="progress-agent-grid">
+            <div class="progress-agent" id="pa-security">
+                <div class="pa-indicator"></div>
+                <div class="pa-info"><span class="pa-name">Security</span><span class="pa-status" id="st-security">Waiting</span></div>
+            </div>
+            <div class="progress-agent" id="pa-performance">
+                <div class="pa-indicator"></div>
+                <div class="pa-info"><span class="pa-name">Performance</span><span class="pa-status" id="st-performance">Waiting</span></div>
+            </div>
+            <div class="progress-agent" id="pa-maintainability">
+                <div class="pa-indicator"></div>
+                <div class="pa-info"><span class="pa-name">Maintainability</span><span class="pa-status" id="st-maintainability">Waiting</span></div>
+            </div>
+            <div class="progress-agent" id="pa-bug_detection">
+                <div class="pa-indicator"></div>
+                <div class="pa-info"><span class="pa-name">Bug Detection</span><span class="pa-status" id="st-bug_detection">Waiting</span></div>
+            </div>
+        </div>
+        <div class="progress-arrow">&#8595;</div>
+        <div class="progress-phase-label">Lead Synthesis</div>
+        <div class="progress-agent progress-lead" id="pa-lead">
+            <div class="pa-indicator"></div>
+            <div class="pa-info"><span class="pa-name">Lead Agent</span><span class="pa-status" id="st-lead">Waiting for specialists</span></div>
+        </div>
+    </div>
+    <div class="progress-log" id="log"></div>
+</div>
+
+<script>
+const timeline = [
+    { t: 0.2, act: () => { log('Submitting code for review...'); }},
+    { t: 0.5, act: () => { log('Dispatching 4 specialist agents in parallel'); }},
+    { t: 0.8, act: () => { run('security'); log('Security started'); }},
+    { t: 1.0, act: () => { run('performance'); log('Performance started'); }},
+    { t: 1.1, act: () => { run('maintainability'); log('Maintainability started'); }},
+    { t: 1.3, act: () => { run('bug_detection'); log('Bug Detection started'); }},
+    { t: 2.0, act: () => { st('security', 'calling scan_security_patterns'); log('Security → scan_security_patterns()'); }},
+    { t: 2.2, act: () => { st('performance', 'calling analyze_complexity'); log('Performance → analyze_complexity()'); }},
+    { t: 2.5, act: () => { st('bug_detection', 'calling trace_logic_flow'); log('Bug Detection → trace_logic_flow()'); }},
+    { t: 2.8, act: () => { st('maintainability', 'calling measure_complexity'); log('Maintainability → measure_complexity()'); }},
+    { t: 4.0, act: () => { st('security', 'calling check_auth_flow'); log('Security → check_auth_flow()'); }},
+    { t: 4.3, act: () => { st('performance', 'calling check_allocations'); log('Performance → check_allocations()'); }},
+    { t: 5.2, act: () => { st('bug_detection', 'calling check_null_safety'); log('Bug Detection → check_null_safety()'); }},
+    { t: 5.5, act: () => { st('maintainability', 'calling check_naming'); log('Maintainability → check_naming()'); }},
+    { t: 6.5, act: () => { st('security', 'calling detect_data_exposure'); log('Security → detect_data_exposure()'); }},
+    { t: 7.0, act: () => { st('performance', 'thinking...'); log('Performance reasoning: analyzing nested loop O(n²) complexity...'); }},
+    { t: 8.0, act: () => { done('bug_detection', '3 findings · 2 calls · 6.7s'); log('Bug Detection done — 3 findings in 6.7s'); }},
+    { t: 9.0, act: () => { done('performance', '2 findings · 3 calls · 8.0s'); log('Performance done — 2 findings in 8.0s'); }},
+    { t: 9.5, act: () => { st('security', 'thinking...'); log('Security reasoning: found SQL injection via f-string query...'); }},
+    { t: 10.5, act: () => { done('maintainability', '1 findings · 2 calls · 9.4s'); log('Maintainability done — 1 findings in 9.4s'); }},
+    { t: 11.5, act: () => { done('security', '4 findings · 3 calls · 10.7s'); log('Security done — 4 findings in 10.7s'); }},
+    { t: 12.0, act: () => { run('lead'); st('lead', 'Merging 10 findings...'); log('Lead agent started — merging 10 specialist findings'); }},
+    { t: 13.0, act: () => { st('lead', 'calling group_by_location'); log('Lead → group_by_location()'); }},
+    { t: 14.5, act: () => { st('lead', 'calling check_agreement'); log('Lead → check_agreement()'); }},
+    { t: 16.0, act: () => { st('lead', 'thinking...'); log('Lead reasoning: resolving conflict on lines 11-13...'); }},
+    { t: 17.5, act: () => { done('lead', 'Grade D · 8 issues · 1 conflict'); log('Lead agent done — Grade D, 8 issues, 1 conflict resolved'); }},
+    { t: 18.0, act: () => { log('Review complete. Redirecting...'); }},
+];
+
+function run(n) { document.getElementById('pa-'+n).classList.add('pa-running'); st(n, 'Analyzing...'); }
+function done(n, s) { const el = document.getElementById('pa-'+n); el.classList.remove('pa-running'); el.classList.add('pa-done'); st(n, s); }
+function st(n, s) { document.getElementById('st-'+n).textContent = s; }
+function log(t) {
+    const el = document.getElementById('log');
+    const ts = document.getElementById('elapsed').textContent;
+    el.innerHTML += '<div class="log-line"><span class="log-ts">'+ts+'</span> '+t+'</div>';
+    el.scrollTop = el.scrollHeight;
+}
+
+const start = Date.now();
+let idx = 0;
+setInterval(() => {
+    const t = (Date.now() - start) / 1000;
+    document.getElementById('elapsed').textContent = t.toFixed(1) + 's';
+    while (idx < timeline.length && timeline[idx].t <= t) { timeline[idx].act(); idx++; }
+}, 50);
+</script>
+</body>
+</html>

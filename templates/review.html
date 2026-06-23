@@ -8,6 +8,7 @@
 </head>
 <body>
     <div class="container">
+        <a href="/" class="back-home">&larr; Back</a>
         <div class="report-header">
             <h1>
                 Code Review
@@ -180,7 +181,7 @@
                     </div>
                     {% else %}
                     <div class="section">
-                        <p style="color: var(--green);">No issues found by this specialist.</p>
+                        <p style="color: var(--text-dim);">No issues found by this specialist.</p>
                     </div>
                     {% endif %}
                 </div>
@@ -207,7 +208,7 @@
                         <span class="eval-label">{{ label }}</span>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="eval-bar-bg">
-                                <div class="eval-bar-fill" style="width: {{ (value * 100) | int }}%; background: {% if value >= 0.7 %}var(--green){% elif value >= 0.4 %}var(--yellow){% else %}var(--red){% endif %};"></div>
+                                <div class="eval-bar-fill" style="width: {{ (value * 100) | int }}%; background: var(--text-mid);"></div>
                             </div>
                             <span style="font-size: 0.8rem; color: var(--text-dim); width: 32px;">{{ (value * 100) | int }}%</span>
                         </div>
@@ -220,7 +221,7 @@
                         {% for name, score in eval.per_specialist.items() %}
                         <div class="eval-row">
                             <span class="eval-label" style="font-size: 0.8rem;">{{ name }}</span>
-                            <span style="font-size: 0.8rem; color: {% if score >= 0.7 %}var(--green){% elif score >= 0.4 %}var(--yellow){% else %}var(--red){% endif %};">{{ (score * 100) | int }}%</span>
+                            <span style="font-size: 0.8rem; color: var(--text-mid);">{{ (score * 100) | int }}%</span>
                         </div>
                         {% endfor %}
                     </div>

@@ -5,45 +5,173 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Agent Code Reviewer</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        <div class="hero">
-            <h1>Multi-Agent Code Reviewer</h1>
-            <p class="subtitle">4 specialist AI agents review your code in parallel, then a lead agent synthesizes findings and resolves disagreements</p>
+<body class="landing">
 
-            <div class="agent-pills">
-                <span class="pill pill-security">Security</span>
-                <span class="pill pill-performance">Performance</span>
-                <span class="pill pill-maintainability">Maintainability</span>
-                <span class="pill pill-bug">Bug Detection</span>
-                <span class="pill pill-lead">Lead Synthesis</span>
+    <!-- Hero -->
+    <section class="hero-split">
+        <div class="hero-left">
+            <h1>Multi-agent<br>code review<br>for every commit</h1>
+            <p class="hero-desc">Your code is reviewed by 4 independent specialist agents in parallel. A lead agent merges findings, resolves disagreements, and delivers a unified verdict.</p>
+            <a href="#input" class="hero-cta">Review Code <span class="arrow">&#8599;</span></a>
+            <p class="hero-sub">Runs locally with mock data. No API key needed.</p>
+        </div>
+        <div class="hero-right">
+            <div class="constellation">
+                <canvas id="constellation-canvas"></canvas>
+                <div class="const-node const-security" style="top:12%;left:58%;">
+                    <span class="const-dot"></span>
+                    <span class="const-label">Security</span>
+                </div>
+                <div class="const-node const-performance" style="top:22%;left:82%;">
+                    <span class="const-dot"></span>
+                    <span class="const-label">Performance</span>
+                </div>
+                <div class="const-node const-maintain" style="top:55%;left:88%;">
+                    <span class="const-dot"></span>
+                    <span class="const-label">Maintainability</span>
+                </div>
+                <div class="const-node const-bug" style="top:72%;left:62%;">
+                    <span class="const-dot"></span>
+                    <span class="const-label">Bug Detection</span>
+                </div>
+                <div class="const-node const-lead" style="top:42%;left:65%;">
+                    <span class="const-dot dot-lg"></span>
+                    <span class="const-label label-lead">Lead Agent <span class="arrow">&#8599;</span></span>
+                </div>
             </div>
+        </div>
+    </section>
 
-            {% if error %}
-            <div class="error-box">{{ error }}</div>
-            {% endif %}
+    <!-- Stats -->
+    <section class="stats-bar">
+        <div class="stat">
+            <span class="stat-label">Specialist Agents</span>
+            <span class="stat-value">4</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Tools per Agent</span>
+            <span class="stat-value">3</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Eval Dimensions</span>
+            <span class="stat-value">4</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Conflict Resolution</span>
+            <span class="stat-value">Automated</span>
+        </div>
+    </section>
 
-            <div class="input-section">
-                <form action="/review" method="post">
-                    <textarea class="code-input" name="code_input" id="code-input"
-                        placeholder="# Paste your code here...&#10;&#10;def example():&#10;    pass"></textarea>
-                    <button type="submit" class="btn" style="margin-top: 16px; width: 100%;">Review Code</button>
-                </form>
+    <!-- Features -->
+    <section class="features-section">
+        <div class="features-header">
+            <h2>Agents as Reviewers</h2>
+            <p>Each agent operates in isolation with its own tools. They can't see each other's findings — only the lead sees everything.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Parallel Execution</h3>
+                <p>4 specialists dispatch simultaneously via asyncio.gather. Wall clock equals the slowest agent, not the sum.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Structured Disagreement</h3>
+                <p>When Security says LOW and Bug Detection says HIGH on the same lines, the lead picks a side and explains why.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Ground-Truth Evals</h3>
+                <p>Every review is scored against known vulnerabilities. Coverage, false positives, conflict resolution, actionability.</p>
+            </div>
+        </div>
+    </section>
 
-                <div class="examples" style="margin-top: 20px;">
+    <!-- Input -->
+    <section class="input-section" id="input">
+        {% if error %}
+        <div class="error-box">{{ error }}</div>
+        {% endif %}
+
+        <div class="input-header">
+            <h2>Paste code to review</h2>
+        </div>
+
+        <div class="input-form">
+            <textarea class="code-input" name="code_input" id="code-input"
+                placeholder="# Paste your code here...&#10;&#10;def example():&#10;    pass"></textarea>
+            <div class="input-actions">
+                <button type="button" class="hero-cta cta-submit" id="submit-btn" onclick="submitReview()">Review Code <span class="arrow">&#8599;</span></button>
+                <div class="examples">
                     Try:
-                    <a onclick="loadSample('user_service')">User Service</a> <span class="sample-hint">(security issues)</span>
-                    &middot; <a onclick="loadSample('data_processor')">Data Processor</a> <span class="sample-hint">(performance issues)</span>
+                    <a onclick="loadSample('user_service')">User Service</a> <span class="sample-hint">(SQL injection, null deref)</span>
+                    &middot; <a onclick="loadSample('data_processor')">Data Processor</a> <span class="sample-hint">(O(n&sup2;), div/0)</span>
                     &middot; <a onclick="loadSample('clean_api')">Clean API</a> <span class="sample-hint">(well-written)</span>
                 </div>
             </div>
-
-            <div class="powered-by">
-                <a href="/compare">Compare agent configurations</a> &middot; Powered by Claude tool_use API
-            </div>
         </div>
-    </div>
+
+        <!-- Progress Panel -->
+        <div class="progress-panel" id="progress-panel" style="display:none;">
+            <div class="progress-header">
+                <div class="progress-title">Reviewing code...</div>
+                <div class="progress-elapsed" id="progress-elapsed">0.0s</div>
+            </div>
+
+            <div class="progress-agents">
+                <div class="progress-phase-label">Parallel Review</div>
+                <div class="progress-agent-grid">
+                    <div class="progress-agent" id="pa-security">
+                        <div class="pa-indicator"></div>
+                        <div class="pa-info">
+                            <span class="pa-name">Security</span>
+                            <span class="pa-status" id="pa-status-security">Waiting</span>
+                        </div>
+                    </div>
+                    <div class="progress-agent" id="pa-performance">
+                        <div class="pa-indicator"></div>
+                        <div class="pa-info">
+                            <span class="pa-name">Performance</span>
+                            <span class="pa-status" id="pa-status-performance">Waiting</span>
+                        </div>
+                    </div>
+                    <div class="progress-agent" id="pa-maintainability">
+                        <div class="pa-indicator"></div>
+                        <div class="pa-info">
+                            <span class="pa-name">Maintainability</span>
+                            <span class="pa-status" id="pa-status-maintainability">Waiting</span>
+                        </div>
+                    </div>
+                    <div class="progress-agent" id="pa-bug_detection">
+                        <div class="pa-indicator"></div>
+                        <div class="pa-info">
+                            <span class="pa-name">Bug Detection</span>
+                            <span class="pa-status" id="pa-status-bug_detection">Waiting</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-arrow">&#8595;</div>
+
+                <div class="progress-phase-label">Lead Synthesis</div>
+                <div class="progress-agent progress-lead" id="pa-lead">
+                    <div class="pa-indicator"></div>
+                    <div class="pa-info">
+                        <span class="pa-name">Lead Agent</span>
+                        <span class="pa-status" id="pa-status-lead">Waiting for specialists</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-log" id="progress-log"></div>
+        </div>
+
+        <div class="input-footer">
+            <a href="/compare">Compare agent configurations <span class="arrow">&#8599;</span></a>
+            <span>&middot;</span>
+            <span>Powered by Claude tool_use API</span>
+        </div>
+    </section>
 
     <script>
     const SAMPLES = {
@@ -54,6 +182,7 @@
 
     function loadSample(key) {
         document.getElementById('code-input').value = SAMPLES[key];
+        document.getElementById('input').scrollIntoView({ behavior: 'smooth' });
     }
 
     document.getElementById('code-input').addEventListener('keydown', function(e) {
@@ -64,6 +193,262 @@
             this.selectionStart = this.selectionEnd = start + 4;
         }
     });
+
+    let timerInterval = null;
+
+    function submitReview() {
+        console.log('[review] submitReview called');
+        const code = document.getElementById('code-input').value;
+        if (!code.trim()) { alert('Paste some code first.'); return; }
+
+        const btn = document.getElementById('submit-btn');
+        const panel = document.getElementById('progress-panel');
+        btn.style.display = 'none';
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth' });
+        console.log('[review] panel shown, fetching /review/stream');
+
+        // Reset
+        ['security','performance','maintainability','bug_detection','lead'].forEach(n => {
+            const el = document.getElementById('pa-' + n);
+            if (el) { el.className = el.className.replace(/ pa-\w+/g, ''); el.classList.add('progress-agent'); if (n==='lead') el.classList.add('progress-lead'); }
+            const st = document.getElementById('pa-status-' + n);
+            if (st) st.textContent = n === 'lead' ? 'Waiting for specialists' : 'Waiting';
+        });
+        document.getElementById('progress-log').innerHTML = '';
+
+        const startTime = Date.now();
+        timerInterval = setInterval(() => {
+            document.getElementById('progress-elapsed').textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+        }, 100);
+
+        addLog('Submitting code for review...');
+
+        fetch('/review/stream', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({code: code}),
+        }).then(response => {
+            if (!response.ok) {
+                return response.json().then(d => { throw new Error(d.error || 'Request failed'); });
+            }
+            const ct = response.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+                return response.json().then(d => {
+                    clearInterval(timerInterval);
+                    if (d.cached) {
+                        addLog('Found cached result, redirecting...');
+                        window.location.href = '/review/' + d.review_id;
+                    }
+                });
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            function read() {
+                reader.read().then(({done, value}) => {
+                    if (done) return;
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                handleEvent(JSON.parse(line.slice(6)));
+                            } catch(e) {}
+                        }
+                    }
+                    read();
+                });
+            }
+            read();
+        }).catch(err => {
+            clearInterval(timerInterval);
+            addLog('Error: ' + err.message);
+            btn.style.display = '';
+        });
+    }
+
+    function handleEvent(msg) {
+        const ev = msg.event;
+
+        if (ev === 'start') {
+            addLog('Dispatching ' + msg.specialists.length + ' specialist agents in parallel');
+        }
+        else if (ev === 'specialist_start') {
+            const el = document.getElementById('pa-' + msg.name);
+            if (el) el.classList.add('pa-running');
+            setStatus(msg.name, 'Analyzing...');
+            addLog(formatName(msg.name) + ' started');
+        }
+        else if (ev === 'agent_step') {
+            if (msg.type === 'tool_call') {
+                setStatus(msg.name, 'calling ' + msg.tool);
+                addLog(formatName(msg.name) + ' → ' + msg.tool + '()');
+            } else if (msg.type === 'reasoning') {
+                setStatus(msg.name, 'thinking...');
+                addLog(formatName(msg.name) + ' reasoning: ' + msg.preview.slice(0, 80));
+            } else if (msg.type === 'llm_call') {
+                if (msg.turn > 1) addLog(formatName(msg.name) + ' turn ' + msg.turn);
+            }
+        }
+        else if (ev === 'specialist_done') {
+            const el = document.getElementById('pa-' + msg.name);
+            if (el) { el.classList.remove('pa-running'); el.classList.add('pa-done'); }
+            setStatus(msg.name, msg.findings + ' findings · ' + msg.tool_calls + ' calls · ' + (msg.duration_ms/1000).toFixed(1) + 's');
+            addLog(formatName(msg.name) + ' done — ' + msg.findings + ' findings in ' + (msg.duration_ms/1000).toFixed(1) + 's');
+        }
+        else if (ev === 'lead_start') {
+            const el = document.getElementById('pa-lead');
+            if (el) el.classList.add('pa-running');
+            setStatus('lead', 'Merging ' + msg.total_findings + ' findings...');
+            addLog('Lead agent started — merging ' + msg.total_findings + ' specialist findings');
+        }
+        else if (ev === 'lead_done') {
+            const el = document.getElementById('pa-lead');
+            if (el) { el.classList.remove('pa-running'); el.classList.add('pa-done'); }
+            setStatus('lead', 'Grade ' + msg.grade + ' · ' + msg.issues + ' issues · ' + msg.conflicts + ' conflicts');
+            addLog('Lead agent done — Grade ' + msg.grade + ', ' + msg.issues + ' issues, ' + msg.conflicts + ' conflicts resolved');
+        }
+        else if (ev === 'done') {
+            clearInterval(timerInterval);
+            addLog('Review complete. Redirecting...');
+            setTimeout(() => { window.location.href = '/review/' + msg.review_id; }, 1500);
+        }
+        else if (ev === 'error') {
+            clearInterval(timerInterval);
+            addLog('Error: ' + msg.message);
+            document.getElementById('submit-btn').style.display = '';
+        }
+    }
+
+    function setStatus(name, text) {
+        const el = document.getElementById('pa-status-' + name);
+        if (el) el.textContent = text;
+    }
+
+    function formatName(n) {
+        return n.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function addLog(text) {
+        const log = document.getElementById('progress-log');
+        const ts = document.getElementById('progress-elapsed').textContent;
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.innerHTML = '<span class="log-ts">' + ts + '</span> ' + text;
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    // Constellation canvas
+    (function() {
+        const canvas = document.getElementById('constellation-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let w, h, particles = [], mouse = { x: -1000, y: -1000 };
+
+        function resize() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            w = canvas.width = rect.width;
+            h = canvas.height = rect.height;
+        }
+
+        function createParticles() {
+            particles = [];
+            const count = Math.floor((w * h) / 2200);
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    r: Math.random() * 2.2 + 0.5,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3,
+                    o: Math.random() * 0.6 + 0.25,
+                });
+            }
+        }
+
+        // Fixed agent positions (matching CSS %)
+        const agents = [
+            { x: 0.58, y: 0.12, r: 8 },   // security
+            { x: 0.82, y: 0.22, r: 7 },   // performance
+            { x: 0.88, y: 0.55, r: 7 },   // maintainability
+            { x: 0.62, y: 0.72, r: 8 },   // bug
+            { x: 0.65, y: 0.42, r: 14 },  // lead
+        ];
+
+        function draw() {
+            ctx.clearRect(0, 0, w, h);
+
+            // Draw connections between agents
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1.2;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(agents[i].x * w, agents[i].y * h);
+                ctx.lineTo(agents[4].x * w, agents[4].y * h);
+                ctx.stroke();
+            }
+
+            // Draw particles
+            for (const p of particles) {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0) p.x = w;
+                if (p.x > w) p.x = 0;
+                if (p.y < 0) p.y = h;
+                if (p.y > h) p.y = 0;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,255,255,${p.o})`;
+                ctx.fill();
+            }
+
+            // Draw connections from particles near agents
+            for (const p of particles) {
+                for (const a of agents) {
+                    const ax = a.x * w, ay = a.y * h;
+                    const dx = p.x - ax, dy = p.y - ay;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 140) {
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(ax, ay);
+                        ctx.strokeStyle = `rgba(255,255,255,${0.14 * (1 - dist / 140)})`;
+                        ctx.lineWidth = 0.6;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Particle-to-particle connections
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 90) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(255,255,255,${0.1 * (1 - dist / 90)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        resize();
+        createParticles();
+        draw();
+        window.addEventListener('resize', () => { resize(); createParticles(); });
+    })();
     </script>
 </body>
 </html>
